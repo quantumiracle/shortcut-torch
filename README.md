@@ -41,7 +41,7 @@ python train_shortcut.py
 
 ### Results
 
-20 epochs on MINST:
+20 epochs (<3 hours) on MINST:
 
 128 steps:
 
