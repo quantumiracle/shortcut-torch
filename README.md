@@ -41,7 +41,24 @@ python train_shortcut.py
 
 ### Results
 
-[Results will be displayed here]
+20 epochs on MINST:
+
+128 steps:
+
+![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/models/ep20_w2.0_steps128.gif)
+
+4 steps:
+
+![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/models/ep20_w2.0_steps4.gif)
+
+2 steps:
+
+![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/models/ep20_w2.0_steps2.gif)
+
+1 step:
+
+![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/models/ep20_w2.0_steps1.gif)
+
 
 ## Technical Details
 
