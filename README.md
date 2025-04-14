@@ -4,6 +4,9 @@
 
 This repository provides a simple implementation of the Shortcut generative model in PyTorch. The implementation follows flow matching principles rather than DDPM (Denoising Diffusion Probabilistic Models).
 
+Unofficial implementation for [One Step Diffusion via Shortcut Models
+](https://arxiv.org/abs/2410.12557)
+
 ## Overview
 
 The Shortcut model extends traditional generative models by incorporating concepts from progressive distillation (for diffusion models) and reflow techniques (for flow matching) during training. This approach can lead to faster sampling and improved efficiency compared to traditional approaches.
