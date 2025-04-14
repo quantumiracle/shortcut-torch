@@ -60,9 +60,14 @@ python train_shortcut.py
 ![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/models/ep20_w2.0_steps1.gif)
 
 
-## Technical Details
-
+## Takeaways
+- Flow matching learns faster and better than standard DDPM
+- 1 or 2 step inference with Shortcut do not visually looks good (to be tuned)
+- For MNIST class condition, one-hot encoding is critical
+- For MNIST images (28x28), patch size 1 is critical, patch size 2 performs significantly worse
+- Faster-DiT techniques do not significantly improve for this simple setting (I do not carefully tune the configurations)
 The implementation is based on flow matching principles and includes optional techniques from Faster-DiT. While these techniques are implemented, they have not been extensively tested and may not significantly improve performance in this specific implementation.
+
 
 ## Learning Dynamics
 
