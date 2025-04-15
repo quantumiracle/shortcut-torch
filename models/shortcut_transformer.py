@@ -15,9 +15,116 @@ from models.utils.blocks import (
     FinalLayer,
     TimestepEmbedder,
 )
+from timm.models.vision_transformer import Mlp
 from torch.utils.checkpoint import checkpoint
+from einops import rearrange
+from torch.nn import functional as F
+from typing import Optional
 
-from models.diffusion_transformer import DiTBlock
+def modulate(x, shift, scale):
+    fixed_dims = [1] * len(shift.shape[1:])
+    shift = shift.repeat(x.shape[0] // shift.shape[0], *fixed_dims)
+    scale = scale.repeat(x.shape[0] // scale.shape[0], *fixed_dims)
+    while shift.dim() < x.dim():
+        shift = shift.unsqueeze(-2)
+        scale = scale.unsqueeze(-2)
+    return x * (1 + scale) + shift
+
+
+def gate(x, g):
+    fixed_dims = [1] * len(g.shape[1:])
+    g = g.repeat(x.shape[0] // g.shape[0], *fixed_dims)
+    while g.dim() < x.dim():
+        g = g.unsqueeze(-2)
+    return g * x
+
+
+class SpatialAxialAttention(nn.Module):
+    def __init__(
+        self,
+        dim: int,
+        heads: int,
+        dim_head: int,
+        rotary_emb: RotaryEmbedding,
+        attn_drop: float = 0.0,
+    ):
+        super().__init__()
+        self.inner_dim = dim_head * heads
+        self.heads = heads
+        self.head_dim = dim_head
+        self.to_qkv = nn.Linear(dim, self.inner_dim * 3, bias=False)
+        self.to_out = nn.Linear(self.inner_dim, dim)
+
+        self.rotary_emb = rotary_emb
+        self.attn_drop = attn_drop
+        self.scale = self.head_dim**-0.5
+
+    def forward(self, x: torch.Tensor):
+        B, H, W, D = x.shape
+
+        q, k, v = self.to_qkv(x).chunk(3, dim=-1)
+
+        q = rearrange(q, "B H W (h d) -> (B) h H W d", h=self.heads)
+        k = rearrange(k, "B H W (h d) -> (B) h H W d", h=self.heads)
+        v = rearrange(v, "B H W (h d) -> (B) h H W d", h=self.heads)
+
+        freqs = self.rotary_emb.get_axial_freqs(H, W)
+        q = apply_rotary_emb(freqs, q)
+        k = apply_rotary_emb(freqs, k)
+
+        # prepare for attn
+        q = rearrange(q, "(B) h H W d -> (B) h (H W) d", B=B, h=self.heads)
+        k = rearrange(k, "(B) h H W d -> (B) h (H W) d", B=B, h=self.heads)
+        v = rearrange(v, "(B) h H W d -> (B) h (H W) d", B=B, h=self.heads)
+        
+        x = F.scaled_dot_product_attention(query=q, key=k, value=v, is_causal=False)
+
+        x = rearrange(x, "(B) h (H W) d -> B H W (h d)", B=B, H=H, W=W, h=self.heads)
+        x = x.type_as(q)
+
+        # linear proj
+        x = self.to_out(x)
+        return x
+
+class DiTBlock(nn.Module):
+    def __init__(
+        self,
+        hidden_size,
+        num_heads,
+        mlp_ratio=4.0,
+        is_causal=True,
+        spatial_rotary_emb: Optional[RotaryEmbedding] = None,
+    ):
+        super().__init__()
+        self.is_causal = is_causal
+        mlp_hidden_dim = int(hidden_size * mlp_ratio)
+        approx_gelu = lambda: nn.GELU(approximate="tanh")
+
+        self.s_norm1 = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
+        self.s_attn = SpatialAxialAttention(
+            hidden_size,
+            heads=num_heads,
+            dim_head=hidden_size // num_heads,
+            rotary_emb=spatial_rotary_emb,
+        )
+        self.s_norm2 = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
+        self.s_mlp = Mlp(
+            in_features=hidden_size,
+            hidden_features=mlp_hidden_dim,
+            act_layer=approx_gelu,
+            drop=0,
+        )
+        self.s_adaLN_modulation = nn.Sequential(nn.SiLU(), nn.Linear(hidden_size, 6 * hidden_size, bias=True))
+
+    def forward(self, x, c):
+        B, H, W, D = x.shape
+
+        # spatial block
+        s_shift_msa, s_scale_msa, s_gate_msa, s_shift_mlp, s_scale_mlp, s_gate_mlp = self.s_adaLN_modulation(c).chunk(6, dim=-1)
+        x = x + gate(self.s_attn(modulate(self.s_norm1(x), s_shift_msa, s_scale_msa)), s_gate_msa)
+        x = x + gate(self.s_mlp(modulate(self.s_norm2(x), s_shift_mlp, s_scale_mlp)), s_gate_mlp)
+
+        return x
 
 class ShortcutTransformer(nn.Module):
     """

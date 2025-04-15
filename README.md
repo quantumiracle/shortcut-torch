@@ -45,19 +45,19 @@ python train_shortcut.py
 
 128 steps:
 
-![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/models/ep20_w2.0_steps128.gif)
+![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/results/ep20_w2.0_steps128.gif)
 
 4 steps:
 
-![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/models/ep20_w2.0_steps4.gif)
+![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/results/ep20_w2.0_steps4.gif)
 
 2 steps:
 
-![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/models/ep20_w2.0_steps2.gif)
+![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/results/ep20_w2.0_steps2.gif)
 
 1 step:
 
-![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/models/ep20_w2.0_steps1.gif)
+![Alt text](https://github.com/quantumiracle/shortcut-torch/blob/master/results/ep20_w2.0_steps1.gif)
 
 
 ## Takeaways
